@@ -31,3 +31,6 @@ python main.py <lvf_dir> <output_dir>
 - [x] Janereader
 - [x] calibre
 - [x] Sigil ePubCheck
+
+## 许可证
+MIT
