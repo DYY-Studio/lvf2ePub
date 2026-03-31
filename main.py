@@ -197,23 +197,25 @@ class LVFConverter:
 
         return str(targetdir.parent / targetdir.with_suffix('.epub').name)
 
-    def parse_s_attribute(self, s_str: str):
+    def parse_s_attribute(self, s_str: str) -> tuple[str, str, str, dict[str, str]]:
         """解析 S 属性中的内联样式和原始类名"""
         if not s_str:
-            return None, None, None
+            return None, None, None, None
         
+        orig_attrs = {item[0].strip(): item[1].strip() for item in re.findall(r'-xepub-([^:]+):\s*([^;]+);', s_str)}
+
         # 提取原始 class
-        class_match = re.search(r'-xepub-class:\s*([^;]+);', s_str)
-        orig_class = class_match.group(1).strip() if class_match else None
+        # class_match = re.search(r'-xepub-class:\s*([^;]+);', s_str)
+        orig_class = orig_attrs.get('class')
         
         # 提取原始 src (针对图片)
-        src_match = re.search(r'-xepub-src:\s*([^;]+);', s_str)
-        orig_src = src_match.group(1).strip() if src_match else None
+        # src_match = re.search(r'-xepub-src:\s*([^;]+);', s_str)
+        orig_src = orig_attrs.get('src')
         
         # 清理掉 -xepub- 开头的私有属性，保留标准 CSS
         clean_style = re.sub(r'-xepub-[^:]+:[^;]+;', '', s_str).strip()
         
-        return orig_class, clean_style, orig_src
+        return orig_class, clean_style, orig_src, orig_attrs
 
     def convert_file(self, input_path: str | Path, output_path: str | Path):
         with open(input_path, 'r', encoding='utf-8') as f:
@@ -232,7 +234,7 @@ class LVFConverter:
             
             # 处理样式和类名
             s_attr = tag.get('S')
-            orig_class, clean_style, orig_src = self.parse_s_attribute(s_attr)
+            orig_class, clean_style, orig_src, orig_attrs = self.parse_s_attribute(s_attr)
 
             # 更新标签名
             tag.name = orig_name
@@ -248,6 +250,9 @@ class LVFConverter:
                 # 优先使用 -xepub-src 里的逻辑路径，如果没有则保留 BVA 物理路径
                 now_src = tag.get('s')
                 tag['src'] = orig_src if orig_src else now_src
+
+                if orig_attrs and (alt := orig_attrs.get('alt-value')):
+                    tag['alt'] = ''.join([chr(int(c.strip(), 16)) for c in alt.split(',')])
 
                 # 处理图像重命名
                 if orig_src:
