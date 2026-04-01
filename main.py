@@ -388,4 +388,4 @@ if __name__ == "__main__":
     print(f'Done: "{converter.generate_epub(lvf_path, args.output_dir)}"')
 
     if temp_dir:
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(temp_dir.parent)
