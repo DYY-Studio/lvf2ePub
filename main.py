@@ -4,6 +4,7 @@ import sqlite3
 import zipfile
 import shutil
 import argparse
+import tempfile
 from lxml import etree
 from pathlib import Path
 from bs4 import BeautifulSoup, Doctype
@@ -252,7 +253,7 @@ class LVFConverter:
                 tag['src'] = orig_src if orig_src else now_src
 
                 if orig_attrs and (alt := orig_attrs.get('alt-value')):
-                    tag['alt'] = ''.join([chr(int(c.strip(), 16)) for c in alt.split(',')])
+                    tag['alt'] = ''.join(chr(int(c.strip(), 16)) for c in alt.split(','))
 
                 # 处理图像重命名
                 if orig_src:
@@ -350,8 +351,8 @@ class LVFConverter:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'lvf_dir', 
-        help='Dir of uncompressed LVF. Required files: /kjroot.db, /standard.opf (content.opf)',
+        'lvf_path', 
+        help='Dir of uncompressed LVF. Or compressed LVF file. Required: /kjroot.db, /standard.opf (content.opf)',
         type=Path
     )
     parser.add_argument(
@@ -361,5 +362,30 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    if not args.output_dir.is_dir():
+        raise FileNotFoundError(f"Cannot find output dir: {args.output_dir}")
+
+    tempdir: Path | None = None
+    lvf_path: Path = args.lvf_path
+    if lvf_path.exists():
+        if lvf_path.is_file():
+            temp_dir = Path(tempfile.mkdtemp()) / lvf_path.with_suffix('').name
+            try:
+                with zipfile.ZipFile(lvf_path) as zf:
+                    nameset = set(zf.namelist())
+                    if not 'kjroot.db' in nameset:
+                        raise FileNotFoundError('Cannot find kjroot.db in LVF file')
+                    elif not ('standard.opf' in nameset or 'content.opf' in nameset):
+                        raise FileNotFoundError('Cannot find standard.opf or content.opf in LVF file')
+                    
+                    temp_dir.mkdir(parents=True, exist_ok=True)
+                    zf.extractall(temp_dir)
+            except:
+                raise
+            lvf_path = temp_dir
+
     converter = LVFConverter()
-    print(f'Done: "{converter.generate_epub(args.lvf_dir, args.output_dir)}"')
+    print(f'Done: "{converter.generate_epub(lvf_path, args.output_dir)}"')
+
+    if temp_dir:
+        shutil.rmtree(temp_dir)
