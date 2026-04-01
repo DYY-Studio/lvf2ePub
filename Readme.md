@@ -11,10 +11,10 @@ pip install bs4 lxml
 ```
 ## 使用方法
 ```shell
-python main.py <lvf_dir> <output_dir>
+python main.py <lvf_path> <output_dir>
 ```
-* `lvf_dir`
-  * Dump出来的LVF文件夹，暂不支持压缩包
+* `lvf_path`
+  * 解压出来的LVF文件夹，或者是Zip格式压缩的LVF文件
   * 必须有下列文件：
     * `/kjroot.db` LVF的TOC文件
     * `/standard.opf` 标准ePub3 OPF
